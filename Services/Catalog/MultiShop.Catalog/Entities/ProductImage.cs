@@ -3,6 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace MultiShop.Catalog.Entities
 {
+    [BsonIgnoreExtraElements]
     public class ProductImage
     {
         [BsonId]
@@ -15,5 +16,6 @@ namespace MultiShop.Catalog.Entities
         [BsonIgnore]
 
         public Product Product { get; set; }
+
     }
 }

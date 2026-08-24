@@ -14,7 +14,7 @@ namespace MultiShop.Catalog.Services.CategoryServices
         {
             var client = new MongoClient(_databaseSettings.ConnectionString);
             var database = client.GetDatabase(_databaseSettings.DatabaseName);
-            _productDetailCollection = database.GetCollection<ProductDetail>(_databaseSettings.CategoryCollectionName);
+            _productDetailCollection = database.GetCollection<ProductDetail>(_databaseSettings.ProductDetailCollectionName);
             _mapper = mapper;
         }
         public async Task CreateProductDetailAsync(CreateProductDetailDto createProductDetailDto)
@@ -45,7 +45,7 @@ namespace MultiShop.Catalog.Services.CategoryServices
         {
             var values = _mapper.Map<ProductDetail>(updateProductDetailDto);
 
-            await _productDetailCollection.FindOneAndReplaceAsync(Queryable => Queryable.ProductDetailId == updateProductDetailDto.ProductId, values);
+            await _productDetailCollection.FindOneAndReplaceAsync(q => q.ProductDetailId == updateProductDetailDto.ProductDetailId, values);
 
         }
     }

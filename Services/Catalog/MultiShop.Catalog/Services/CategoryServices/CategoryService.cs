@@ -29,7 +29,8 @@ namespace MultiShop.Catalog.Services.CategoryServices
         }
         public async Task<List<ResultCategoryDto>> GetAllCategoriesAsync()
         {
-            var values = await _categoryCollection.Find(x => true).ToListAsync();
+            var filter = Builders<Category>.Filter.Exists(x => x.CategoryName, true);
+            var values = await _categoryCollection.Find(filter).ToListAsync();
             return _mapper.Map<List<ResultCategoryDto>>(values);
         }
         public async Task<GetByIdCategoryDto> GetByIdCategoryDto(string id)

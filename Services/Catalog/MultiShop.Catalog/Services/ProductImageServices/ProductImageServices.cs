@@ -4,7 +4,6 @@ using MultiShop.Catalog.Dtos.ProductDtos;
 using MultiShop.Catalog.Dtos.ProductImageDtos;
 using MultiShop.Catalog.Entities;
 using MultiShop.Catalog.Settings;
-using static MongoDB.Driver.WriteConcern;
 
 namespace MultiShop.Catalog.Services.CategoryServices
 {
@@ -18,7 +17,7 @@ namespace MultiShop.Catalog.Services.CategoryServices
         {
             var client = new MongoClient(_databaseSettings.ConnectionString);
             var database = client.GetDatabase(_databaseSettings.DatabaseName);
-            _productImageCollection = database.GetCollection<ProductImage>(_databaseSettings.CategoryCollectionName);
+            _productImageCollection = database.GetCollection<ProductImage>(_databaseSettings.ProductImageCollectionName);
             _mapper = mapper;
         }
         public async Task CreateProductImageAsync(CreateProductImageDto createProductImageDto)
