@@ -1,18 +1,28 @@
 # MultiShop
 
-ASP.NET Core 9 mikroservis e-ticaret projesi. Şu an **Catalog** servisi hazır: MongoDB üzerinde kategori, ürün, ürün detayı ve ürün görseli için REST API.
+ASP.NET Core 9 mikroservis e-ticaret projesi. Catalog (MongoDB), Discount (Dapper + SQL Server) ve Order (CQRS + EF Core) servisleri içerir.
 
 Repo: [github.com/MahirAKSIN/MultiShop](https://github.com/MahirAKSIN/MultiShop)
 
 ---
 
-## Ne yapıldı?
+## Servisler
 
-Catalog servisi katmanlı yapıyla kuruldu: entity, DTO, AutoMapper, servis, controller.
+| Servis | Veri katmanı | Açıklama |
+|---|---|---|
+| **Catalog** | MongoDB | Kategori, ürün, ürün detayı, ürün görseli CRUD |
+| **Discount** | Dapper + SQL Server | Kupon CRUD |
+| **Order** | EF Core + CQRS | Adres, sipariş detayı (OrderDetail), sipariş (Ordering) |
 
-### 1. Entity katmanı
+Hedef framework: **.NET 9.0**
 
-MongoDB belgelerini temsil eder. `_id` alanı `ObjectId` olarak tutulur.
+---
+
+## 1. Catalog servisi
+
+Katmanlı yapı: entity, DTO, AutoMapper, servis, controller. MongoDB üzerinde çalışır.
+
+### Entity / koleksiyonlar
 
 | Sınıf | Koleksiyon | Ana alanlar |
 |---|---|---|
@@ -21,109 +31,182 @@ MongoDB belgelerini temsil eder. `_id` alanı `ObjectId` olarak tutulur.
 | `ProductDetail` | ProductDetails | `ProductDescription`, `ProductInfo`, `ProductId` |
 | `ProductImage` | ProductImages | `Images1`, `Images2`, `Images3`, `ProductId` |
 
-`[BsonIgnoreExtraElements]` eklendi. Belgede sınıfta olmayan bir alan varsa deserialize hatası vermez.
+`[BsonIgnoreExtraElements]` ile belgede fazla alan olsa bile deserialize patlamaz.
 
-Navigation property’ler (`Category`, `Product`) `[BsonIgnore]` ile işaretli; MongoDB’ye yazılmaz.
+### DTO
 
-### 2. DTO katmanı
-
-API entity’yi dışarı açmaz. Her işlem için ayrı DTO vardır:
-
-- `Create*Dto` — ekleme (Id yok, MongoDB üretir)
+- `Create*Dto` — ekleme (Id yok)
 - `Update*Dto` — güncelleme (Id var)
 - `Result*Dto` — liste
 - `GetById*Dto` — tek kayıt
 
-### 3. AutoMapper (`GeneralMapping`)
+### Servisler
 
-Entity ile DTO arasında dönüşüm `GeneralMapping` profilinde tanımlı. Örnek:
+`ICategoryService`, `IProductServices`, `IProductDetailService`, `IProductImageServices` — her biri kendi MongoDB koleksiyonunu kullanır.
 
-```csharp
-var values = _mapper.Map<Product>(createProductDto);
-await _productCollection.InsertOneAsync(values);
+### API
+
+| HTTP | Route | Açıklama |
+|---|---|---|
+| GET | `/api/Categories` | Liste |
+| GET | `/api/Categories/{id}` | Tek kayıt |
+| POST | `/api/Categories` | Ekle |
+| PUT | `/api/Categories` | Güncelle |
+| DELETE | `/api/Categories?id=` | Sil |
+
+Aynı kalıp: `Product`, `ProductDetail`, `ProductImage`.
+
+### Paketler
+
+| Paket | Sürüm | Ne işe yarar? |
+|---|---|---|
+| AutoMapper | 16.2.0 | Entity ↔ DTO |
+| MongoDB.Driver | 2.30.0 | MongoDB CRUD |
+| MongoDB.Bson | 2.30.0 | BSON / `[BsonId]` |
+| MongoDB.Driver.Core | 2.30.0 | Düşük seviye sürücü |
+| Swashbuckle.AspNetCore | 9.0.6 | Swagger UI |
+| Microsoft.AspNetCore.OpenApi | 9.0.17 | OpenAPI belgesi |
+
+### Çalıştırma
+
+```bash
+dotnet run --project Services/Catalog/MultiShop.Catalog
 ```
 
-`CreateProductDto` → `Product` map edilir, sonra MongoDB’ye eklenir. `ProductId` DTO’da yoktur; insert sırasında üretilir.
+- HTTPS: `https://localhost:7231`
+- HTTP: `http://localhost:5149`
+- Swagger: `https://localhost:7231/swagger`
+- MongoDB: `mongodb://localhost:27017` / `MultiShopCatalogDb`
 
-### 4. Servis katmanı (CRUD)
+---
 
-Her kaynak için interface + implementation:
+## 2. Discount servisi
 
-- `ICategoryService` / `CategoryService`
-- `IProductServices` / `ProductServices`
-- `IProductDetailService` / `ProductDetailService`
-- `IProductImageServices` / `ProductImageServices`
+SQL Server + Dapper ile kupon CRUD. EF Core yalnızca migration / tablo oluşturmak için kullanılır; runtime sorgular Dapper ile gider.
 
-Metotlar:
+### Entity
 
-| Metot | İş |
+`Coupon`: `CouponId`, `Code`, `Rate`, `IsActive`, `Validate`
+
+### Yapı
+
+- `DapperContext` — connection string + `createConnection()`
+- `IDiscountService` / `DiscountService` — SQL CRUD
+- `DiscountsController` — REST API
+
+### API
+
+| HTTP | Route |
 |---|---|
-| `GetAll*Async` | Tüm kayıtlar |
-| `GetBy*Id` | Id ile tek kayıt |
-| `Create*Async` | `InsertOneAsync` |
-| `Update*Async` | `FindOneAndReplaceAsync` |
-| `Delete*Async` | `DeleteOneAsync` |
+| GET | `/api/Discounts` |
+| GET | `/api/Discounts/{id}` |
+| POST | `/api/Discounts` |
+| PUT | `/api/Discounts` |
+| DELETE | `/api/Discounts/{id}` |
 
-Her servis kendi koleksiyonunu kullanır (`ProductCollectionName`, `ProductDetailCollectionName`, …). Hepsi `Categories` koleksiyonuna yazılırsa belgeler karışır ve `FormatException` oluşur.
+### Paketler
 
-### 5. Controller katmanı
+| Paket | Sürüm | Ne işe yarar? |
+|---|---|---|
+| Dapper | 2.1.79 | Hafif SQL erişimi |
+| Microsoft.EntityFrameworkCore | 9.0.19 | Migration / DbContext |
+| Microsoft.EntityFrameworkCore.SqlServer | 9.0.19 | SQL Server provider |
+| Microsoft.EntityFrameworkCore.Design / Tools | 9.0.19 | `Add-Migration`, `Update-Database` |
+| Swashbuckle.AspNetCore | 9.0.6 | Swagger UI |
+| Microsoft.AspNetCore.OpenApi | 9.0.17 | OpenAPI |
 
-Hepsi `CategoriesController` ile aynı kalıpta:
+> Not: EF Core **10.x** yalnızca `net10.0` ile uyumludur. Proje `net9.0` olduğu için **9.0.x** kullanılmalıdır.
 
-- `GET /api/{controller}` — liste
-- `GET /api/{controller}/{id}` — tek kayıt
-- `POST /api/{controller}` — ekle
-- `PUT /api/{controller}` — güncelle
-- `DELETE /api/{controller}?id=` — sil
+### Çalıştırma
 
-Controller’lar:
+```bash
+dotnet run --project Services/Discount/MultiShop.Discount
+```
 
-- `CategoriesController` → `/api/Categories`
-- `ProductController` → `/api/Product`
-- `ProductDetailController` → `/api/ProductDetail`
-- `ProductImageController` → `/api/ProductImage`
+- HTTPS: `https://localhost:7108`
+- HTTP: `http://localhost:5259`
+- Swagger kök adreste açılır
+- DB: `MultiShopDiscount` (SQL Server, Windows auth)
 
-### 6. Dependency Injection (`Program.cs`)
+Migration:
 
-- Servisler `AddScoped` ile kaydedildi
-- `DatabaseSetting` section `IDatabaseSettings` olarak `AddSingleton` ile bağlandı (yoksa `Unable to resolve IDatabaseSettings` hatası)
-- AutoMapper yalnızca `GeneralMapping` profilini yükler (`AddMaps` ile tüm assembly taranmaz; `ReflectionTypeLoadException` olmasın diye)
-- Swagger: `AddSwaggerGen` + `UseSwagger` / `UseSwaggerUI`
-
-### 7. MongoDB ayarları
-
-`appsettings.json`:
-
-```json
-"DatabaseSetting": {
-  "CategoryCollectionName": "Categories",
-  "ProductCollectionName": "Products",
-  "ProductDetailCollectionName": "ProductDetails",
-  "ProductImageCollectionName": "ProductImages",
-  "ConnectionString": "mongodb://localhost:27017",
-  "DatabaseName": "MultiShopCatalogDb"
-}
+```powershell
+Add-Migration mig1 -StartupProject MultiShop.Discount -Project MultiShop.Discount
+Update-Database -StartupProject MultiShop.Discount -Project MultiShop.Discount
 ```
 
 ---
 
-## Kullanılan paketler
+## 3. Order servisi
 
-Hedef framework: **.NET 9.0**
+Clean Architecture + CQRS. Katmanlar:
+
+| Proje | Rol |
+|---|---|
+| `MultiShop.Order.Domain` | Entity’ler: `Address`, `Ordering`, `OrderDetail` |
+| `MultiShop.Order.Application` | CQRS Commands / Queries / Handlers / Results, `IRepository` |
+| `MultiShop.Order.Infrastructure` | `OrderContext` (EF Core), `Repository` |
+| `MultiShop.Order.Presention` | API controller’lar |
+
+### Domain
+
+- **Address:** `AddressId`, `UserId`, `District`, `City`, `Detail`
+- **Ordering:** `OrderingId`, `UserId`, `TotalPrice`, `OrderDate`, `OrderDetails`
+- **OrderDetail:** `OrderDetailId`, `ProductId`, `ProductName`, `ProductPrice`, `ProductAmount`, `ProductTotalPrice`, `OrderingId`
+
+### CQRS klasör yapısı
+
+```
+Features/CQRS/
+├── Commands/
+│   ├── AddressCommands/
+│   ├── OrderDetailCommands/
+│   └── OrderingCommands/
+├── Handlers/
+│   ├── AddressHandlers/
+│   ├── OrderDetailHandlers/
+│   └── OrderingHandlers/
+├── Queries/
+│   ├── AddressQueries/
+│   ├── OrderDetailQueries/
+│   └── OrderingQueries/
+└── Results/
+    ├── AddressResults/
+    ├── OrderDetailResults/
+    └── OrderingResults/
+```
+
+Her kaynak için tipik dosyalar:
+
+- Commands: Create / Update / Remove (Delete)
+- Queries: GetById (+ liste query)
+- Results: Get*QueryResult, Get*ByIdQueryResult
+- Handlers: Create / Update / Remove / GetAll / GetById
+
+### Infrastructure
+
+- `OrderContext` — EF Core `DbContext`
+- `Repository<T>` — `IRepository<T>` implementasyonu (`GetAllAsync`, `GetByIdAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `GetByFilterAsync`)
+
+### API (Presention)
+
+- `AddressesController`
+- `OrderDetailController`
+
+### Paketler
 
 | Paket | Sürüm | Ne işe yarar? |
 |---|---|---|
-| **AutoMapper** | 16.2.0 | Entity ↔ DTO dönüşümü. `GeneralMapping` profili `Program.cs` içinde `AddProfile` ile kaydedilir. |
-| **MongoDB.Driver** | 2.30.0 | Ana C# sürücüsü. `MongoClient`, `IMongoCollection`, `InsertOneAsync`, `Find`, `DeleteOneAsync`, `FindOneAndReplaceAsync`. |
-| **MongoDB.Bson** | 2.30.0 | BSON serileştirme. `[BsonId]`, `[BsonRepresentation]`, `[BsonIgnore]`, `[BsonIgnoreExtraElements]`. `MongoDB.Driver` ile birlikte gelir; açık referans da duruyor. |
-| **MongoDB.Driver.Core** | 2.30.0 | Düşük seviye sürücü (bağlantı, wire protocol). `MongoDB.Driver` bağımlılığıdır. |
-| **Swashbuckle.AspNetCore** | 9.0.6 | Swagger UI. Endpoint’leri tarayıcıdan denemek için `/swagger`. .NET 9 ile uyumlu 9.x kullanıldı (10.x ASP.NET Core 10 içindir). |
-| **Microsoft.AspNetCore.OpenApi** | 9.0.17 | .NET 9 yerleşik OpenAPI belgesi (`AddOpenApi` / `MapOpenApi`). Swagger’a ek olarak OpenAPI JSON üretir. |
+| Microsoft.EntityFrameworkCore | 9.0.0 | ORM |
+| Microsoft.EntityFrameworkCore.SqlServer | 9.0.0 | SQL Server |
+| Microsoft.EntityFrameworkCore.Design / Tools | 9.0.0 | Migration araçları |
+| Microsoft.AspNetCore.OpenApi | 9.0.17 | OpenAPI (Presention) |
 
-SDK’dan gelenler (NuGet’te ayrıca yok):
+### Çalıştırma
 
-- `Microsoft.NET.Sdk.Web` — Kestrel, MVC controllers, DI, `WebApplication`
-- `Microsoft.Extensions.Options` — `IOptions<DatabaseSettings>` ile config binding
+```bash
+dotnet run --project Services/Order/Presention/MultiShop.Order.Presention
+```
 
 ---
 
@@ -132,60 +215,18 @@ SDK’dan gelenler (NuGet’te ayrıca yok):
 ```
 MultiShop/
 ├── MultiShop.sln
-└── Services/Catalog/MultiShop.Catalog/
-    ├── Controllers/          REST endpoint’ler
-    ├── Dtos/                 API modelleri
-    ├── Entities/             MongoDB belgeleri
-    ├── Mapping/              AutoMapper profili
-    ├── Services/             İş kuralları + MongoDB CRUD
-    ├── Settings/             IDatabaseSettings
-    ├── Program.cs
-    └── appsettings.json
+├── README.md
+└── Services/
+    ├── Catalog/MultiShop.Catalog/
+    ├── Discount/MultiShop.Discount/
+    └── Order/
+        ├── Core/
+        │   ├── MultiShop.Order.Domain/
+        │   ├── MultiShop.Order.Application/
+        │   ├── MultiShop.Order.Infrastructure/
+        │   └── MultiShop.Order.WebApi/
+        └── Presention/MultiShop.Order.Presention/
 ```
-
----
-
-## API özeti
-
-Tüm controller’larda aynı HTTP fiilleri:
-
-| HTTP | Route | Açıklama |
-|---|---|---|
-| GET | `/api/Categories` | Kategori listesi |
-| GET | `/api/Categories/{id}` | Tek kategori |
-| POST | `/api/Categories` | Kategori ekle |
-| PUT | `/api/Categories` | Kategori güncelle |
-| DELETE | `/api/Categories?id=` | Kategori sil |
-
-Aynı kalıp `Product`, `ProductDetail`, `ProductImage` için geçerlidir.
-
-Örnek ürün ekleme gövdesi:
-
-```json
-{
-  "productName": "Kablosuz Mouse",
-  "productPrice": 799.90,
-  "productImageUrl": "/images/mouse.jpg",
-  "productDescription": "Bluetooth 5.0",
-  "categoryId": "66c7abcd1234567890abcdef"
-}
-```
-
----
-
-## Çalıştırma
-
-1. MongoDB’nin `localhost:27017` üzerinde açık olması gerekir.
-2. Projeyi çalıştır:
-
-```bash
-dotnet run --project Services/Catalog/MultiShop.Catalog
-```
-
-3. Adresler (`launchSettings.json`):
-   - HTTPS: `https://localhost:7231`
-   - HTTP: `http://localhost:5149`
-   - Swagger UI: `https://localhost:7231/swagger`
 
 ---
 
@@ -196,7 +237,9 @@ dotnet run --project Services/Catalog/MultiShop.Catalog
 | `Unable to resolve IDatabaseSettings` | DI’ye arayüz kaydedilmemişti | `AddSingleton<IDatabaseSettings>` |
 | `ReflectionTypeLoadException` | AutoMapper `AddMaps` tüm assembly’yi tarıyordu | `AddProfile<GeneralMapping>()` |
 | `UseSwagger` / `AddSwaggerGen` CS1061 | Swashbuckle paketi yoktu | `Swashbuckle.AspNetCore 9.0.6` |
-| `Element 'ProductImageUrl' does not match ProductDetail` | Tüm servisler `Categories` koleksiyonunu kullanıyordu | Her servise kendi koleksiyon adı |
-| `Element 'ProductName' does not match Category` | Eski ürün belgeleri `Categories` içinde kalmıştı | `[BsonIgnoreExtraElements]` + `CategoryName` filtresi |
-
-Eski karışık belgeler hâlâ `Categories` koleksiyonunda duruyor olabilir. Yeni ürünler `Products` koleksiyonuna yazılır.
+| `Element 'ProductImageUrl' does not match ProductDetail` | Yanlış MongoDB koleksiyonu | Her servise kendi koleksiyon adı |
+| `Element 'ProductName' does not match Category` | Eski karışık belgeler | `[BsonIgnoreExtraElements]` + filtre |
+| EF Core 10.x restore hatası | `net9.0` ile uyumsuz | EF Core **9.0.x** kullan |
+| Migration Startup Project hatası | Catalog seçiliydi | Startup: `MultiShop.Discount` |
+| Swagger conflicting GET path | İki `[HttpGet]` aynı route | `GET {id}` ayır |
+| `Cannot perform runtime binding on a null reference` | Dapper generic tip yoktu | `QueryFirstOrDefaultAsync<T>` |

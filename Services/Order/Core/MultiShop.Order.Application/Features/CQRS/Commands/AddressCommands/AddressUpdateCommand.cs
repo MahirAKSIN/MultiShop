@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace MultiShop.Order.Application.Features.CQRS.Results.AddressResults
 {
-    public class GetAddressUpdateQueryResult
+    public class AddressUpdateQueryResult
     {
         public int AddressId { get; set; }
         public string UserId { get; set; }
