@@ -23,7 +23,7 @@ namespace MultiShop.Order.Infrastructure.Repositories
        public async Task CreateAsync(T entity)
         {
           _orderContext.Set<T>().Add(entity);
-            await _orderContext.SaveChangesAsync();
+           await _orderContext.SaveChangesAsync();
 
         }
 

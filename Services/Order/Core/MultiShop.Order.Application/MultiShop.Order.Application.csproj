@@ -8,14 +8,15 @@
 
   <ItemGroup>
     <Folder Include="Features\CQRS\Commands\OrderingCommands\" />
-    <Folder Include="Features\CQRS\Handlers\OrderingHandlers\" />
-    <Folder Include="Features\CQRS\Queries\OrderingQueries\" />
-    <Folder Include="Features\CQRS\Results\OrderingResults\" />
-    <Folder Include="Features\Mediator\" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="Features\CQRS\Commands\AddressCommands\AddressUpdateCommand.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="14.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.19" />
   </ItemGroup>
 
   <ItemGroup>

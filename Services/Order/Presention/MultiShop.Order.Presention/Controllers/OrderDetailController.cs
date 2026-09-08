@@ -38,17 +38,17 @@ namespace MultiShop.Order.Presention.Controllers
         public async Task<IActionResult> UpdateOrderDetail(UpdateOrderDetailCommand command)
         {
             await _updateOrderDetailCommandHandler.Handler(command);
-            return Ok("Address update succesed");
+            return Ok("Order Detail update succesed");
         }
         [HttpPost]
         public async Task<IActionResult> CreateOrderDetail(CreateOrderDetailCommand command)
         {
             await _createOrderDetailCommandHandler.Handler(command);
-            return Ok("Address create succesed");
+            return Ok("Order Detail  create succesed");
 
         }
         [HttpGet("{id}")]
-        public async Task<IActionResult> OrderDetailListById(int id)
+        public async Task<IActionResult> GetOrderDetailListById(int id)
         {
             var values = await _getOrderDetailByIdQueryHandler.Handler(new GetOrderDetailByIdQuery(id));
             return Ok(values);
@@ -59,10 +59,8 @@ namespace MultiShop.Order.Presention.Controllers
         public async Task RemoveOrderDetail(int id)
         {
             await _removeOrderDetailCommandHandler.Handler(new RemoveOrderDetailCommand(id));
-            Ok("Adress deleted succes");
+            Ok("Order Detail  deleted succes");
         }
-
-
 
     }
 }
