@@ -192,6 +192,11 @@ Her kaynak için tipik dosyalar:
 
 - `AddressesController`
 - `OrderDetailController`
+- `OrderingController`
+
+Swagger UI (Addresses, OrderDetail, Ordering):
+
+![Order Swagger UI](docs/images/order-swagger.png)
 
 ### Paketler
 
@@ -201,12 +206,17 @@ Her kaynak için tipik dosyalar:
 | Microsoft.EntityFrameworkCore.SqlServer | 9.0.0 | SQL Server |
 | Microsoft.EntityFrameworkCore.Design / Tools | 9.0.0 | Migration araçları |
 | Microsoft.AspNetCore.OpenApi | 9.0.17 | OpenAPI (Presention) |
+| Swashbuckle.AspNetCore | 9.0.6 | Swagger UI |
 
 ### Çalıştırma
 
 ```bash
 dotnet run --project Services/Order/Presention/MultiShop.Order.Presention
 ```
+
+- HTTPS: `https://localhost:7008`
+- HTTP: `http://localhost:5123`
+- Swagger kök adreste açılır (`https://localhost:7008`)
 
 ---
 

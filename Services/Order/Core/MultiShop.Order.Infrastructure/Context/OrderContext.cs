@@ -1,10 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MultiShop.Order.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MultiShop.Order.Infrastructure.Context
 {
@@ -12,7 +7,7 @@ namespace MultiShop.Order.Infrastructure.Context
     {
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlServer("Server=DESKTOP-P5Q4357;Initial Catalog=MultiShopDiscount;Integrated Security=True;TrustServerCertificate=True");
+            optionsBuilder.UseSqlServer("Server=localhost,1434;Initial Catalog=MultiShopOrderDb;User Id=sa;Password=MHRm1858!;TrustServerCertificate=True");
 
         }
 
