@@ -6,6 +6,7 @@ using MultiShop.IdentityServer.Models;
 
 namespace MultiShop.IdentityServer.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class RegistersController : ControllerBase

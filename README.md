@@ -1,6 +1,6 @@
 # MultiShop
 
-ASP.NET Core 9 mikroservis e-ticaret projesi. Catalog (MongoDB), Discount (Dapper + SQL Server) ve Order (CQRS + EF Core) servisleri içerir.
+ASP.NET Core 9 mikroservis e-ticaret projesi. Catalog (MongoDB), Discount (Dapper + SQL Server), Order (CQRS + EF Core) ve Duende IdentityServer ile JWT korumalı API’ler içerir.
 
 Repo: [github.com/MahirAKSIN/MultiShop](https://github.com/MahirAKSIN/MultiShop)
 
@@ -10,11 +10,69 @@ Repo: [github.com/MahirAKSIN/MultiShop](https://github.com/MahirAKSIN/MultiShop)
 
 | Servis | Veri katmanı | Açıklama |
 |---|---|---|
-| **Catalog** | MongoDB | Kategori, ürün, ürün detayı, ürün görseli CRUD |
-| **Discount** | Dapper + SQL Server | Kupon CRUD |
+| **Catalog** | MongoDB | Kategori, ürün, ürün detayı, ürün görseli CRUD (JWT) |
+| **Discount** | Dapper + SQL Server | Kupon CRUD (JWT) |
 | **Order** | EF Core + CQRS | Adres, sipariş detayı (OrderDetail), sipariş (Ordering) |
+| **IdentityServer** | ASP.NET Identity + SQL Server | Duende IS — token, kullanıcı kaydı, API resource/scope |
 
 Hedef framework: **.NET 9.0**
+
+---
+
+## 0. IdentityServer ve JWT yetkilendirme
+
+Duende IdentityServer (`IdentityServer/MultiShop.IdentityServer`) client credentials ile access token üretir. Catalog ve Discount API’leri `JwtBearer` ile bu token’ı doğrular.
+
+### ApiResource / Scope
+
+| ApiResource (`aud`) | Scope’lar |
+|---|---|
+| `ResourceCatalog` | `CatalogReadPermission`, `CatalogFullPermission` |
+| `ResourceDiscount` | `DiscountReadPermission`, `DiscountFullPermission` |
+| `ResourceOrder` | `OrderReadPermission`, `OrderFullPermission` |
+
+`HostingExtensions` içinde `AddInMemoryApiResources(Config.ApiResources)` kayıtlı olmalı; aksi halde token `aud` değeri `ResourceCatalog` / `ResourceDiscount` olmaz ve API **401** döner.
+
+### Client’lar
+
+| ClientId | Secret | Tipik scope |
+|---|---|---|
+| `MultiShopVisitorId` | `multishopsecret` | `DiscountReadPermission` |
+| `MultiShopManagerId` | `multishopsecret` | Catalog + Discount read/full |
+| `MultiShopAdminId` | `multishopsecret` | Tüm API scope’ları + local API |
+
+### Token alma (Postman)
+
+```text
+POST http://localhost:5001/connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=MultiShopManagerId
+client_secret=multishopsecret
+grant_type=client_credentials
+scope=CatalogReadPermission
+```
+
+Discount için `scope=DiscountReadPermission` (Visitor ile de aynı scope). jwt.io’da `aud` ilgili resource ile eşleşmeli; Duende token tipi `at+jwt`.
+
+### API tarafı (Catalog / Discount)
+
+- `Authority`: `IdentityServerUrl` → `http://localhost:5001`
+- `ValidAudience`: `ResourceCatalog` veya `ResourceDiscount`
+- `ValidTypes`: `at+jwt`
+- `RequireHttpsMetadata = false` (local)
+- Controller’larda `[Authorize]`
+- Pipeline: `UseAuthentication` → `UseAuthorization`
+
+### Çalıştırma
+
+```bash
+dotnet run --project IdentityServer/MultiShop.IdentityServer
+```
+
+- IdentityServer: `http://localhost:5001`
+- Catalog (JWT): `https://localhost:7231` — örn. `GET /api/Categories` + Bearer
+- Discount (JWT): `https://localhost:7108` — örn. `GET /api/Discounts` + Bearer
 
 ---
 
@@ -226,6 +284,7 @@ dotnet run --project Services/Order/Presention/MultiShop.Order.Presention
 MultiShop/
 ├── MultiShop.sln
 ├── README.md
+├── IdentityServer/MultiShop.IdentityServer/
 └── Services/
     ├── Catalog/MultiShop.Catalog/
     ├── Discount/MultiShop.Discount/
@@ -253,3 +312,5 @@ MultiShop/
 | Migration Startup Project hatası | Catalog seçiliydi | Startup: `MultiShop.Discount` |
 | Swagger conflicting GET path | İki `[HttpGet]` aynı route | `GET {id}` ayır |
 | `Cannot perform runtime binding on a null reference` | Dapper generic tip yoktu | `QueryFirstOrDefaultAsync<T>` |
+| Catalog/Discount API **401** | `ApiResources` IS’a eklenmemiş / yanlış `aud` / eski token | `AddInMemoryApiResources` + `ValidAudience` + `ValidTypes = at+jwt` + yeni token |
+| Visitor ile Discount gelmiyor | Yanlış scope (Catalog) veya Visitor’da olmayan scope | `MultiShopVisitorId` + `scope=DiscountReadPermission` |

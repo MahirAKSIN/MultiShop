@@ -33,3 +33,5 @@ appsettings.*.local.json
 .env
 .env.*
 !/.env.example
+**/keys/
+*.json.key

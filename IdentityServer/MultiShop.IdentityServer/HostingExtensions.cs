@@ -30,10 +30,13 @@ internal static class HostingExtensions
                 options.Events.RaiseSuccessEvents = true;
             })
             .AddInMemoryIdentityResources(Config.IdentityResources)
+            .AddInMemoryApiResources(Config.ApiResources)
             .AddInMemoryApiScopes(Config.ApiScopes)
             .AddInMemoryClients(Config.Clients)
             .AddAspNetIdentity<ApplicationUser>()
             .AddLicenseSummary();
+
+        builder.Services.AddLocalApiAuthentication();
 
         // Google OAuth - gerçek ClientId/Secret gelene kadar kapalı tutuldu
         // builder.Services.AddAuthentication()
@@ -53,6 +56,7 @@ internal static class HostingExtensions
 
         app.UseStaticFiles();
         app.UseRouting();
+        app.UseAuthentication();
         app.UseIdentityServer();
         app.UseAuthorization();
 
