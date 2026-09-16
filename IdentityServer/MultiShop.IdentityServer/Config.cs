@@ -20,6 +20,10 @@ public static class Config
         {
             Scopes = { "OrderFullPermission", "OrderReadPermission" }
         },
+         new ApiResource("ResourceCargo")
+        {
+            Scopes = { "CargoFullPermission" }
+        },
         new ApiResource(IdentityServerConstants.LocalApi.ScopeName)
     };
     public static IEnumerable<IdentityResource> IdentityResources => new IdentityResource[]
@@ -36,6 +40,7 @@ public static class Config
         new ApiScope("DiscountReadPermission", "Reading authority for discount operations"),
         new ApiScope("OrderFullPermission", "Full authority for order operations"),
         new ApiScope("OrderReadPermission", "Reading authority for order operations"),
+        new ApiScope("CargoFullPermission", "Reading authority for cargo operations"),
         new ApiScope(IdentityServerConstants.LocalApi.ScopeName)
     };
     public static IEnumerable<Client> Clients => new Client[]
@@ -76,6 +81,7 @@ public static class Config
                     "DiscountFullPermission",
                     "OrderReadPermission",
                     "OrderFullPermission",
+                    "CargoFullPermission",
                     IdentityServerConstants.LocalApi.ScopeName,
                     IdentityServerConstants.StandardScopes.Email,
                     IdentityServerConstants.StandardScopes.OpenId,
