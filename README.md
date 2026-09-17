@@ -1,6 +1,6 @@
 # MultiShop
 
-ASP.NET Core 9 mikroservis e-ticaret projesi. Catalog (MongoDB), Discount (Dapper + SQL Server), Order (CQRS + EF Core) ve Duende IdentityServer ile JWT korumalı API’ler içerir.
+ASP.NET Core 9 mikroservis e-ticaret projesi. Catalog (MongoDB), Discount (Dapper + SQL Server), Order (CQRS + EF Core), Cargo (EF Core), Basket (Redis) ve Duende IdentityServer ile JWT korumalı API’ler içerir.
 
 Repo: [github.com/MahirAKSIN/MultiShop](https://github.com/MahirAKSIN/MultiShop)
 
@@ -13,6 +13,8 @@ Repo: [github.com/MahirAKSIN/MultiShop](https://github.com/MahirAKSIN/MultiShop)
 | **Catalog** | MongoDB | Kategori, ürün, ürün detayı, ürün görseli CRUD (JWT) |
 | **Discount** | Dapper + SQL Server | Kupon CRUD (JWT) |
 | **Order** | EF Core + CQRS | Adres, sipariş detayı (OrderDetail), sipariş (Ordering) |
+| **Cargo** | EF Core + SQL Server | Kargo şirketi, müşteri, detay, operasyon CRUD |
+| **Basket** | Redis | Sepet kaydetme / okuma / silme (`StackExchange.Redis`) |
 | **IdentityServer** | ASP.NET Identity + SQL Server | Duende IS — token, kullanıcı kaydı, API resource/scope |
 
 Hedef framework: **.NET 9.0**
@@ -278,6 +280,64 @@ dotnet run --project Services/Order/Presention/MultiShop.Order.Presention
 
 ---
 
+## 4. Basket servisi (Redis)
+
+Sepet verisi SQL yerine **Redis** üzerinde tutulur. Kullanıcı id’si key, sepet JSON’u value olarak yazılır.
+
+### Yapı
+
+| Parça | Rol |
+|---|---|
+| `RedisSettings` | `Host`, `Port` (`appsettings.json`) |
+| `RedisService` | `StackExchange.Redis` bağlantısı (`Connect`, `Getdb`) |
+| `IBasketServices` / `BasketService` | `SaveBasket`, `GetBasket`, `DeleteBasket` |
+| `BasketController` | REST API |
+| `BasketTotalDto` / `BasketItemDto` | Sepet + kalem DTO’ları |
+
+### DTO
+
+- `BasketTotalDto`: `UsreId`, `DiscountCode`, `DiscountRate`, `BasketItems`, `TotolPrice` (kalemlerin toplamı)
+- `BasketItemDto`: ürün kalemi (fiyat, adet vb.)
+
+### Servis metotları
+
+| Metot | Redis işlemi |
+|---|---|
+| `SaveBasket` | `StringSetAsync(userId, json)` |
+| `GetBasket` | `StringGetAsync(userId)` → deserialize |
+| `DeleteBasket` | `KeyDeleteAsync(userId)` |
+
+### Paketler
+
+| Paket | Sürüm | Ne işe yarar? |
+|---|---|---|
+| StackExchange.Redis | 3.2.1 | Redis istemcisi |
+| Microsoft.AspNetCore.Authentication.JwtBearer | 9.0.0 | JWT (IdentityServer ile) |
+| Microsoft.AspNetCore.OpenApi | 9.0.17 | OpenAPI |
+
+### Ayarlar (`appsettings.json`)
+
+```json
+"RedisSettings": {
+  "Host": "localhost",
+  "Port": 6379
+},
+"IdentityServerUrl": "http://localhost:5001"
+```
+
+### Çalıştırma
+
+Redis’in ayakta olması gerekir (`localhost:6379`).
+
+```bash
+dotnet run --project Services/Basket/MultiShop.Basket
+```
+
+- HTTPS / HTTP: `https://localhost:7074` / `http://localhost:7074`
+- API: `/api/Basket`
+
+---
+
 ## Klasör yapısı
 
 ```
@@ -286,6 +346,8 @@ MultiShop/
 ├── README.md
 ├── IdentityServer/MultiShop.IdentityServer/
 └── Services/
+    ├── Basket/MultiShop.Basket/
+    ├── Cargo/
     ├── Catalog/MultiShop.Catalog/
     ├── Discount/MultiShop.Discount/
     └── Order/
