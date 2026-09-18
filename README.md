@@ -23,7 +23,7 @@ Hedef framework: **.NET 9.0**
 
 ## 0. IdentityServer ve JWT yetkilendirme
 
-Duende IdentityServer (`IdentityServer/MultiShop.IdentityServer`) client credentials ile access token üretir. Catalog ve Discount API’leri `JwtBearer` ile bu token’ı doğrular.
+Duende IdentityServer (`IdentityServer/MultiShop.IdentityServer`) access token üretir. Catalog, Discount ve Basket API’leri `JwtBearer` ile bu token’ı doğrular.
 
 ### ApiResource / Scope
 
@@ -32,38 +32,52 @@ Duende IdentityServer (`IdentityServer/MultiShop.IdentityServer`) client credent
 | `ResourceCatalog` | `CatalogReadPermission`, `CatalogFullPermission` |
 | `ResourceDiscount` | `DiscountReadPermission`, `DiscountFullPermission` |
 | `ResourceOrder` | `OrderReadPermission`, `OrderFullPermission` |
+| `ResourceCargo` | `CargoFullPermission` |
+| `ResourceBasket` | `BasketFullPermission` |
 
-`HostingExtensions` içinde `AddInMemoryApiResources(Config.ApiResources)` kayıtlı olmalı; aksi halde token `aud` değeri `ResourceCatalog` / `ResourceDiscount` olmaz ve API **401** döner.
+`HostingExtensions` içinde `AddInMemoryApiResources(Config.ApiResources)` kayıtlı olmalı; aksi halde token `aud` değeri yanlış olur ve API **401** döner.
 
 ### Client’lar
 
-| ClientId | Secret | Tipik scope |
-|---|---|---|
-| `MultiShopVisitorId` | `multishopsecret` | `DiscountReadPermission` |
-| `MultiShopManagerId` | `multishopsecret` | Catalog + Discount read/full |
-| `MultiShopAdminId` | `multishopsecret` | Tüm API scope’ları + local API |
+| ClientId | Secret | Grant | Tipik scope |
+|---|---|---|---|
+| `MultiShopVisitorId` | `multishopsecret` | client_credentials | Discount |
+| `MultiShopManagerId` | `multishopsecret` | password | Catalog + Discount |
+| `MultiShopAdminId` | `multishopsecret` | password + client_credentials | Tüm API’ler (Basket, Cargo, Order…) |
 
-### Token alma (Postman)
+### Token alma — Catalog (örnek)
 
 ```text
 POST http://localhost:5001/connect/token
 Content-Type: application/x-www-form-urlencoded
 
-client_id=MultiShopManagerId
+client_id=MultiShopAdminId
 client_secret=multishopsecret
 grant_type=client_credentials
 scope=CatalogReadPermission
 ```
 
-Discount için `scope=DiscountReadPermission` (Visitor ile de aynı scope). jwt.io’da `aud` ilgili resource ile eşleşmeli; Duende token tipi `at+jwt`.
+### Token alma — Basket (password)
 
-### API tarafı (Catalog / Discount)
+```text
+POST http://localhost:5001/connect/token
+
+client_id=MultiShopAdminId
+client_secret=multishopsecret
+grant_type=password
+username=<kullanıcı>
+password=<şifre>
+scope=BasketFullPermission openid profile
+```
+
+jwt.io’da `aud` ilgili resource ile eşleşmeli; Duende token tipi `at+jwt`. Basket için `sub` claim’i (kullanıcı id) gerekir.
+
+### API tarafı (Catalog / Discount / Basket)
 
 - `Authority`: `IdentityServerUrl` → `http://localhost:5001`
-- `ValidAudience`: `ResourceCatalog` veya `ResourceDiscount`
+- `ValidAudience`: `ResourceCatalog` / `ResourceDiscount` / `ResourceBasket`
 - `ValidTypes`: `at+jwt`
 - `RequireHttpsMetadata = false` (local)
-- Controller’larda `[Authorize]`
 - Pipeline: `UseAuthentication` → `UseAuthorization`
 
 ### Çalıştırma
@@ -75,6 +89,7 @@ dotnet run --project IdentityServer/MultiShop.IdentityServer
 - IdentityServer: `http://localhost:5001`
 - Catalog (JWT): `https://localhost:7231` — örn. `GET /api/Categories` + Bearer
 - Discount (JWT): `https://localhost:7108` — örn. `GET /api/Discounts` + Bearer
+- Basket (JWT): `https://localhost:7074` — örn. `POST /api/Basket` + Bearer
 
 ---
 
@@ -282,29 +297,56 @@ dotnet run --project Services/Order/Presention/MultiShop.Order.Presention
 
 ## 4. Basket servisi (Redis)
 
-Sepet verisi SQL yerine **Redis** üzerinde tutulur. Kullanıcı id’si key, sepet JSON’u value olarak yazılır.
+Sepet verisi SQL yerine **Redis** üzerinde tutulur. JWT zorunlu; kullanıcı id’si token’daki `sub` (veya `client_id`) claim’inden alınır ve Redis key olarak kullanılır.
 
 ### Yapı
 
 | Parça | Rol |
 |---|---|
-| `RedisSettings` | `Host`, `Port` (`appsettings.json`) |
-| `RedisService` | `StackExchange.Redis` bağlantısı (`Connect`, `Getdb`) |
+| `RedisSettings` | `Host`, `Port` (`appsettings.json`) — Options ile bağlanır |
+| `RedisService` | `StackExchange.Redis` (`Connect`, `Getdb`) — Singleton |
 | `IBasketServices` / `BasketService` | `SaveBasket`, `GetBasket`, `DeleteBasket` |
-| `BasketController` | REST API |
+| `ILoginService` / `LoginService` | Token’dan kullanıcı id (`sub`) |
+| `BasketController` | REST API (`[Authorize]`) |
 | `BasketTotalDto` / `BasketItemDto` | Sepet + kalem DTO’ları |
 
-### DTO
+> DI notu: `Configure<RedisSettings>` kullanılmalı. `Configure<RedisService>` parametresiz ctor ister → `MissingMethodException`.
 
-- `BasketTotalDto`: `UsreId`, `DiscountCode`, `DiscountRate`, `BasketItems`, `TotolPrice` (kalemlerin toplamı)
-- `BasketItemDto`: ürün kalemi (fiyat, adet vb.)
+### API
+
+| HTTP | Route | Açıklama |
+|---|---|---|
+| GET | `/api/Basket` | Giriş yapan kullanıcının sepeti |
+| POST | `/api/Basket` | Sepeti kaydet / güncelle |
+| DELETE | `/api/Basket` | Sepeti sil |
+
+### POST body örneği
+
+`UsreId` body’de **gönderilmez** (opsiyonel); sunucu token’dan yazar. `productId` sayı olmalı.
+
+```json
+{
+  "discountCode": "Yok",
+  "discountRate": 0,
+  "basketItems": [
+    {
+      "productId": 1,
+      "productName": "Bilgisayar",
+      "quantity": 1,
+      "price": 15000
+    }
+  ]
+}
+```
+
+Postman: `Authorization: Bearer <access_token>`, URL: `https://localhost:7074/api/Basket` (HTTP: `http://localhost:5241`).
 
 ### Servis metotları
 
 | Metot | Redis işlemi |
 |---|---|
 | `SaveBasket` | `StringSetAsync(userId, json)` |
-| `GetBasket` | `StringGetAsync(userId)` → deserialize |
+| `GetBasket` | `StringGetAsync(userId)` → deserialize (boşsa `null`) |
 | `DeleteBasket` | `KeyDeleteAsync(userId)` |
 
 ### Paketler
@@ -312,7 +354,8 @@ Sepet verisi SQL yerine **Redis** üzerinde tutulur. Kullanıcı id’si key, se
 | Paket | Sürüm | Ne işe yarar? |
 |---|---|---|
 | StackExchange.Redis | 3.2.1 | Redis istemcisi |
-| Microsoft.AspNetCore.Authentication.JwtBearer | 9.0.0 | JWT (IdentityServer ile) |
+| Microsoft.AspNetCore.Authentication.JwtBearer | 9.0.0 | JWT |
+| Swashbuckle.AspNetCore | 9.0.6 | Swagger UI (kök adres) |
 | Microsoft.AspNetCore.OpenApi | 9.0.17 | OpenAPI |
 
 ### Ayarlar (`appsettings.json`)
@@ -333,8 +376,10 @@ Redis’in ayakta olması gerekir (`localhost:6379`).
 dotnet run --project Services/Basket/MultiShop.Basket
 ```
 
-- HTTPS / HTTP: `https://localhost:7074` / `http://localhost:7074`
-- API: `/api/Basket`
+- HTTPS: `https://localhost:7074`
+- HTTP: `http://localhost:5241`
+- Swagger kök adreste açılır
+- JWT audience: `ResourceBasket`
 
 ---
 
@@ -376,3 +421,7 @@ MultiShop/
 | `Cannot perform runtime binding on a null reference` | Dapper generic tip yoktu | `QueryFirstOrDefaultAsync<T>` |
 | Catalog/Discount API **401** | `ApiResources` IS’a eklenmemiş / yanlış `aud` / eski token | `AddInMemoryApiResources` + `ValidAudience` + `ValidTypes = at+jwt` + yeni token |
 | Visitor ile Discount gelmiyor | Yanlış scope (Catalog) veya Visitor’da olmayan scope | `MultiShopVisitorId` + `scope=DiscountReadPermission` |
+| Basket Redis `MissingMethodException` | `Configure<RedisService>` Options parametresiz ctor ister | `Configure<RedisSettings>` + `new RedisService(Host, Port)` + `Connect()` |
+| Basket **401** | Token’da `scope=BasketFullPermission` yok / Bearer yok | Password grant + scope; jwt.io’da `aud=ResourceBasket` |
+| Basket POST **400** `UsreId required` | Non-nullable string validation action’dan önce çalışır | `UsreId` nullable; sunucu token `sub` ile set eder |
+| Cargo `ObjectDisposedException` | Repository’de `async void` + `SaveChangesAsync` | Senkron `SaveChanges()` |
