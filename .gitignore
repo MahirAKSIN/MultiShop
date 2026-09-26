@@ -26,6 +26,10 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
+## Node / frontend vendor
+**/node_modules/
+Frontends/**/wwwroot/**/.git/
+
 ## Secrets / local
 appsettings.*.local.json
 *.pfx
