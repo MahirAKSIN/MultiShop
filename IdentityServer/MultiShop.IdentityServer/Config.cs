@@ -20,7 +20,7 @@ public static class Config
         {
             Scopes = { "OrderFullPermission", "OrderReadPermission" }
         },
-         new ApiResource("ResourceCargo")
+        new ApiResource("ResourceCargo")
         {
             Scopes = { "CargoFullPermission" }
         },  
