@@ -8,5 +8,9 @@ namespace MultiShop.WebUI.Controllers
         {
             return View();
         }
+        public IActionResult ProductList()
+        {
+            return View();
+        }
     }
 }
