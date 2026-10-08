@@ -1,7 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MultiShop.Order.Application.Features.CQRS.Commands.OrderDetailCommands;
 using MultiShop.Order.Application.Features.Mediator.Commands.OrderingCommands;
 using MultiShop.Order.Application.Features.Mediator.Queries.OrderingQueries;
 
