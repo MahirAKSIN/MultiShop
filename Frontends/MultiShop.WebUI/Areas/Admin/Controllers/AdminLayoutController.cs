@@ -7,7 +7,7 @@ namespace MultiShop.WebUI.Areas.Admin.Controllers
     {
         public IActionResult Index()
         {
-            return View();
+            return RedirectToAction("Index", "Category");
         }
     }
 }
