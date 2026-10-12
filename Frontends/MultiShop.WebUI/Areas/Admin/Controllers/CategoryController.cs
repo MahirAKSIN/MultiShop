@@ -34,19 +34,19 @@ namespace MultiShop.WebUI.Areas.Admin.Controllers
 
             return View(new List<ResultCategoryDto>());
         }
-
-        //public IActionResult CreateCategory()
-        //{
-         
-        //    return View();
-        //}
-        public async Task<IActionResult> CreateCategory(CreateCategoryDto createCategoryDto)
+        [HttpGet]
+        public IActionResult CreateCategory()
         {
             ViewBag.v1 = "AnaSayfa";
             ViewBag.v2 = "Kategoriler";
             ViewBag.v3 = "Yeni Kategori Girisi";
             ViewBag.v0 = "Kategori Islemleri";
+            return View();
+        }
+        [HttpPost]
 
+        public async Task<IActionResult> CreateCategory(CreateCategoryDto createCategoryDto)
+        {
             var client = _httpClientFactory.CreateClient();
             var jsonData = JsonConvert.SerializeObject(createCategoryDto);
             StringContent content = new StringContent(jsonData, Encoding.UTF8, "application/json");
