@@ -53,9 +53,14 @@ namespace MultiShop.WebUI.Areas.Admin.Controllers
             var responseMessage = await client.PostAsync("https://localhost:7070/api/Categories", content);
             if (responseMessage.IsSuccessStatusCode)
             {
-
                 return RedirectToAction("Index", "Category", new { area = "Admin" });
             }
+
+            ViewBag.v1 = "AnaSayfa";
+            ViewBag.v2 = "Kategoriler";
+            ViewBag.v3 = "Yeni Kategori Girisi";
+            ViewBag.v0 = "Kategori Islemleri";
+            ViewBag.error = "Kategori eklenemedi. API durum kodu: " + (int)responseMessage.StatusCode;
             return View();
         }
     }
