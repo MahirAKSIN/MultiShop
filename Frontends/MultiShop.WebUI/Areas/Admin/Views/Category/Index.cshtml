@@ -8,8 +8,7 @@
     <div class="row">
         <div class="col-md-12">
             <div class="chart-box">
-                <h4>Basic Tables</h4>
-                <p>For basic styling&mdash;light padding and only horizontal dividers&mdash;add the base class <code>.table</code> to any <code>&lt;table&gt;</code>. It may seem super redundant, but given the widespread use of tables for other plugins like calendars and date pickers, we've opted to isolate our custom table styles.</p>
+                <h4>New Category Add</h4>
                 <div class="bs-example" data-example-id="simple-table">
                     <table class="table">
 
@@ -29,8 +28,8 @@
                                     <th scope="row">@item.CategoryId</th>
                                     <td>@item.CategoryName</td>
                                     <td><a href="#" class="btn btn-warning">Category Product</a></td>
-                                    <td><a href="#" class="btn btn-danger">Delete</a></td>
-                                    <td><a href="#" class="btn btn-success">Update</a></td>
+                                    <td><a href="/Admin/Category/DeleteCategory/@item.CategoryId" class="btn btn-danger">Delete</a></td>
+                                    <td><a href="/Admin/Category/UpdateCategory/@item.CategoryId" class="btn btn-success">Update</a></td>
                                 </tr>
                             }
                         </tbody>

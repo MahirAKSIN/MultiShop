@@ -1,0 +1,34 @@
+﻿@using MultiShop.DtoLayer.CatalogDtos.CategoryDtos
+@model UpdateCategoryDto
+
+@{
+    ViewData["Title"] = "Index";
+    Layout = "~/Areas/Admin/Views/AdminLayout/Index.cshtml";
+   // Model ??= new UpdateCategoryDto();
+}
+
+<section class="content container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="chart-box">
+                @if (ViewBag.error != null)
+                {
+                    <div class="alert alert-danger">@ViewBag.error</div>
+                }
+                <h4>Update Category</h4>
+                <div class="bs-example" data-example-id="simple-table">
+                    <form method="post" asp-area="Admin" asp-controller="Category" asp-action="UpdateCategory" asp-route-id="@Model.CategoryId">
+                        <label>Category Id</label>
+                        <input type="hidden" name="CategoryId" value="@Model.CategoryId" />
+                        <input type="text" readonly class="form-control" value="@Model.CategoryId" />
+                        <br />
+                        <label>Category Name</label>
+                        <input type="text" class="form-control" name="CategoryName" value="@Model.CategoryName" />
+                        <br />
+                        <button type="submit" class="btn btn-primary">Update Category</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
