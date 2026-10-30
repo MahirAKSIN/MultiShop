@@ -1,6 +1,4 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
-
-namespace MultiShop.Catalog.Dtos.ProductDtos
+﻿namespace MultiShop.Catalog.Dtos.ProductDtos
 {
     public class ResultProductDto
     {
