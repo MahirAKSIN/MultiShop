@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using MultiShop.Catalog.Dtos.CategoryDtos;
 using MultiShop.Catalog.Dtos.ProductDtos;
 using MultiShop.Catalog.Entities;
 using MultiShop.Catalog.Settings;
@@ -11,12 +12,14 @@ namespace MultiShop.Catalog.Services.CategoryServices
     {
         private readonly IMongoCollection<Product> _productCollection;
         private readonly IMapper _mapper;
+        private readonly IMongoCollection<Category> _categoryCollection;
 
         public ProductServices(IDatabaseSettings _databaseSettings, IMapper mapper)
         {
             var client = new MongoClient(_databaseSettings.ConnectionString);
             var database = client.GetDatabase(_databaseSettings.DatabaseName);
             _productCollection = database.GetCollection<Product>(_databaseSettings.ProductCollectionName);
+            _categoryCollection = database.GetCollection<Category>(_databaseSettings.CategoryCollectionName);
             _mapper = mapper;
         }
 
@@ -62,6 +65,20 @@ namespace MultiShop.Catalog.Services.CategoryServices
             }
 
             return Builders<Product>.Filter.Eq(x => x.ProductId, id);
+        }
+
+        public async Task<List<ResultProductWithCategoryDto>> ResultProductWithCategoryAsync()
+        {
+            var values = await _productCollection.Find(q => true).ToListAsync();
+            var result = new List<ResultProductWithCategoryDto>();
+            foreach (var item in values)
+            {
+                item.Category = await _categoryCollection.Find(q => q.CategoryId == item.CategoryId).FirstAsync();
+                var dto = _mapper.Map<ResultProductWithCategoryDto>(item);
+                dto.Category = _mapper.Map<ResultCategoryDto>(item.Category);
+                result.Add(dto);
+            }
+            return result;
         }
     }
 }
