@@ -1,0 +1,37 @@
+﻿@model MultiShop.DtoLayer.CatalogDtos.FeatureSliderDtos.UpdateFeatureSliderDto
+
+@{
+    ViewData["Title"] = "UpdateFeatureSliderDto";
+    Layout = "~/Areas/Admin/Views/AdminLayout/Index.cshtml";
+}
+<section class="content container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="chart-box">
+                @if (ViewBag.error != null)
+                {
+                    <div class="alert alert-danger">@ViewBag.error</div>
+                }
+                <h4>Öne cıkanlar Gorseller Guncellme Girişi</h4>
+                <div class="bs-example" data-example-id="simple-table">
+                    <form method="post" asp-area="Admin" asp-controller="FeatureSlider" asp-action="UpdateFeatureSlider" asp-route-id="@Model.FeatureSliderId">
+                        <label>Slider Id</label>
+                        <input type="hidden" name="FeatureSliderId" value="@Model.FeatureSliderId" />
+                        <input type="text" readonly class="form-control" value="@Model.FeatureSliderId" />
+                        <br />
+                        <label>Gorsel Baslığı</label>
+                        <input type="text" class="form-control" name="Title" value="@Model.Title" />
+                        <br />
+                        <label>Gorsel Acıklaması</label>
+                        <input type="text" class="form-control" name="Description" value="@Model.Description" />
+                        <br />
+                        <label>Gorsel linki</label>
+                        <input type="text" class="form-control" name="ImageUrl" value="@Model.ImageUrl" placeholder="ornek: carousel-1.jpg" />
+                        <br />
+                        <button type="submit" class="btn btn-primary">Öne cıkanlar Gorseller Guncellme</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
